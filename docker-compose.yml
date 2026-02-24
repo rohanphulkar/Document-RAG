@@ -1,0 +1,63 @@
+networks:
+  internal:
+    internal: true
+  public:
+
+services:
+  server:
+    build: ./server
+    restart: unless-stopped
+    env_file:
+      - ./server/.env
+    networks:
+      - internal
+      - public
+    expose:
+      - "8000"
+    depends_on:
+      - qdrant
+
+  client:
+    build: ./client
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+      - /var/www/certbot:/var/www/certbot:ro
+    networks:
+      - public
+    depends_on:
+      - server
+
+  qdrant:
+    image: qdrant/qdrant
+    restart: unless-stopped
+    networks:
+      - internal
+
+  prometheus:
+    image: prom/prometheus
+    restart: unless-stopped
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    networks:
+      - internal
+      - public
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor
+    restart: unless-stopped
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    ports:
+      - "8080:8080"
+    networks:
+      - internal
+      - public
